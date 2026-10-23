@@ -1,6 +1,22 @@
 spring:
   application:
     name: tuition-ledger
+  # Local secrets live in backend/.env (git-ignored); copy backend/.env.example to start.
+  config:
+    import: optional:file:.env[.properties],optional:file:backend/.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/tuition_ledger}
+    username: ${DB_USERNAME:tuition_ledger}
+    password: ${DB_PASSWORD:}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  jpa:
+    open-in-view: false
+
+server:
+  port: ${SERVER_PORT:8080}
 
 management:
   endpoints:
