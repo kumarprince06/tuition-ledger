@@ -1,0 +1,12 @@
+/* Base only; design tokens and components arrive in S1-13c. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  font-family: system-ui, sans-serif;
+}
