@@ -1,0 +1,5 @@
+# ADR-0003 Postgres outbox and scheduled relays instead of a message broker
+**Context.** Outbound work is WhatsApp sends and Razorpay calls; volume is low; the hard requirement is that a message is sent at least once after its triggering transaction commits and never twice.
+**Decision.** An `outbox_messages` table written in the same transaction as the business change (via a Modulith event listener). A relay job polls every 10 s with `FOR UPDATE SKIP LOCKED`, sends, and records the provider message ID. Dedupe keys make enqueue idempotent.
+**Consequences.** No broker to run; the outbox table is the queue, visible in SQL; retries and dead letters are rows. Latency is up to 10 s, acceptable for receipts. When relay throughput becomes the bottleneck (several hundred sends per second), the step is a Debezium connector from the outbox table to Kafka with the same consumers; nothing upstream changes.
+**Alternatives.** Kafka/RabbitMQ now: more moving parts for one engineer with no throughput need. Sending inside the request transaction: a provider timeout would roll back a payment.
