@@ -656,13 +656,12 @@ function signupView() {
   const stepper = `<ol class="stepper" aria-label="Registration steps">${[['centre', 'Your centre'], ['account', 'Your account'], ['otp', 'Verify phone']].map(([k, l], i) => `<li class="${i < at ? 'done' : i === at ? 'on' : ''}" ${i === at ? 'aria-current="step"' : ''}>${i + 1}. ${l}</li>`).join('')}</ol>`;
   let body;
   if (u.step === 'centre') {
-    const name = u.centreName || '', prefix = u.prefix ?? '', prefOk = /^[A-Z]{2,4}$/.test(prefix), ok = name.trim().length >= 3 && prefOk;
+    const name = u.centreName || '', prefix = suggestPrefix(name) || 'TL', ok = name.trim().length >= 3;
     body = `<div><h1>Let's set up your centre</h1><p class="muted" style="margin-top:6px">Free for 30 days with every Starter feature. No card needed.</p></div>
     <form class="form-card" data-submit="signup-centre" novalidate>
       <label class="field">Coaching centre name<input class="inp" data-bind="v.centreName" data-live value="${esc(name)}" placeholder="e.g. Bright Minds Academy" autocomplete="organization" autofocus><span class="hint">Parents see this name on every WhatsApp message and receipt.</span></label>
-      <div class="two"><label class="field"><span>City <span class="hint">(optional)</span></span><input class="inp" data-bind="v.city" value="${esc(u.city || '')}" placeholder="e.g. Howrah" autocomplete="address-level2"></label>
-      <label class="field">Receipt prefix<input class="inp tnum" data-bind="v.prefix" data-live data-upper maxlength="4" value="${esc(prefix)}" aria-invalid="${!!prefix && !prefOk}" aria-describedby="pref-h"><span class="hint" id="pref-h">${prefix && !prefOk ? '<span class="err">2–4 capital letters</span>' : '2–4 letters, fixed after the first receipt'}</span></label></div>
-      <div class="receipt-prev" aria-label="Receipt preview"><span class="mark" style="width:40px;height:40px">${name ? esc(initials(name)) : 'TL'}</span><span class="grow"><span class="tiny">Your first receipt will look like</span><div class="no">${prefOk ? prefix : 'XX'}-2026-000001</div><div class="small muted">${esc(name || 'Your centre name')}</div></span></div>
+      <label class="field"><span>City <span class="hint">(optional)</span></span><input class="inp" data-bind="v.city" value="${esc(u.city || '')}" placeholder="e.g. Howrah" autocomplete="address-level2"></label>
+      <div class="receipt-prev" aria-label="Receipt preview"><span class="mark" style="width:40px;height:40px">${name ? esc(initials(name)) : 'TL'}</span><span class="grow"><span class="tiny">Your receipts will be numbered</span><div class="no">${esc(prefix)}-2026-000001</div><div class="small muted">You can change the letters in Settings before your first receipt.</div></span></div>
       <button class="btn btn-primary btn-lg" ${ok ? '' : 'disabled'}>Next: your account</button>
     </form>
     <p class="center">Already registered? <a href="#login">Sign in</a></p>`;
@@ -933,7 +932,7 @@ function reportsView() {
 }
 
 /* ---------- settings (owner) ---------- */
-function makeDraft() { return JSON.parse(JSON.stringify({ centre: { name: DB.centre.name, address: DB.centre.address, timezone: DB.centre.timezone }, settings: DB.settings })); }
+function makeDraft() { return JSON.parse(JSON.stringify({ centre: { name: DB.centre.name, address: DB.centre.address, timezone: DB.centre.timezone, prefix: DB.centre.prefix }, settings: DB.settings })); }
 const settingsDirty = () => S.draft && JSON.stringify(S.draft) !== JSON.stringify(makeDraft());
 function settingsView() {
   if (S.role !== 'OWNER') return notFoundView();
@@ -944,7 +943,7 @@ function settingsView() {
   let body = '';
   if (sec === 'centre') body = `<div class="grid g2"><label class="field">Centre name<input class="inp" data-bind="d.centre.name" value="${esc(d.centre.name)}"><span class="hint">Shown in every message and receipt.</span></label><label class="field">Address<input class="inp" data-bind="d.centre.address" value="${esc(d.centre.address)}"></label>
     <label class="field">Timezone<select class="inp" data-bind="d.centre.timezone">${['Asia/Kolkata', 'Asia/Dubai', 'Asia/Kathmandu', 'Asia/Dhaka'].map(z => `<option ${d.centre.timezone === z ? 'selected' : ''}>${z}</option>`).join('')}</select><span class="hint">Sets the fee month, quiet hours and digests.</span></label>
-    <label class="field">Receipt prefix<input class="inp tnum" value="${esc(DB.centre.prefix)}" disabled><span class="hint">${DB.payments.length ? `Locked after the first receipt. Next: ${DB.centre.prefix}-2026-${String(DB.receiptNext).padStart(6, '0')}` : 'Locked once the first receipt is issued.'}</span></label>
+    <label class="field">Receipt prefix${DB.payments.length ? `<input class="inp tnum" value="${esc(DB.centre.prefix)}" disabled><span class="hint">Locked after the first receipt. Next: ${DB.centre.prefix}-2026-${String(DB.receiptNext).padStart(6, '0')}</span>` : `<input class="inp tnum" data-bind="d.centre.prefix" data-live data-upper maxlength="4" value="${esc(d.centre.prefix)}" aria-invalid="${!/^[A-Z]{2,4}$/.test(d.centre.prefix)}"><span class="hint">${/^[A-Z]{2,4}$/.test(d.centre.prefix) ? `Receipts will be ${esc(d.centre.prefix)}-2026-000001, … You can change this until the first receipt.` : '<span class="err">2–4 capital letters</span>'}</span>`}</label>
     <label class="field">Message language<select class="inp" data-bind="d.settings.language">${['English', 'Bengali (templates pending approval)', 'Hindi (later)'].map(z => `<option ${st.language === z ? 'selected' : ''} ${z.includes('later') ? 'disabled' : ''}>${z}</option>`).join('')}</select></label></div>`;
   if (sec === 'whatsapp') { const w = DB.centre.whatsapp, held = DB.messages.filter(m => m.status === 'held').length;
     body = `<div class="stack"><div class="card card-bd stack" style="box-shadow:none"><div class="row between"><h3>WhatsApp Business number</h3>${w === 'connected' ? pill('p-green', 'connected') : w === 'pending' ? pill('p-amber', 'in review') : pill('p-grey', 'not connected')}</div>
@@ -1265,7 +1264,7 @@ const ACT = {
   // settings
   offset: (el) => { const o = Number(el.dataset.v), s = S.draft.settings; if (s.reminderOffsets.includes(o)) { if (s.reminderOffsets.length > 1) s.reminderOffsets = s.reminderOffsets.filter(x => x !== o); else toast('Keep at least one reminder day.'); } else if (s.reminderOffsets.length < 4) s.reminderOffsets = [...s.reminderOffsets, o].sort((a, b) => a - b); else toast('Up to 4 reminder days.'); },
   'settings-discard': () => { S.draft = makeDraft(); toast('Changes discarded.'); },
-  'settings-save': () => { const d = S.draft; d.settings.dueDay = Math.min(28, Math.max(1, Number(d.settings.dueDay) || 5)); d.settings.editWindow = Math.min(30, Math.max(1, Number(d.settings.editWindow) || 7)); const changes = Object.keys(d.settings).filter(k => JSON.stringify(d.settings[k]) !== JSON.stringify(DB.settings[k])).concat(Object.keys(d.centre).filter(k => d.centre[k] !== DB.centre[k]));
+  'settings-save': () => { const d = S.draft; if (!/^[A-Z]{2,4}$/.test(d.centre.prefix)) { toast('Receipt prefix needs 2–4 capital letters.'); return; } if (DB.payments.length) d.centre.prefix = DB.centre.prefix; d.settings.dueDay = Math.min(28, Math.max(1, Number(d.settings.dueDay) || 5)); d.settings.editWindow = Math.min(30, Math.max(1, Number(d.settings.editWindow) || 7)); const changes = Object.keys(d.settings).filter(k => JSON.stringify(d.settings[k]) !== JSON.stringify(DB.settings[k])).concat(Object.keys(d.centre).filter(k => d.centre[k] !== DB.centre[k]));
     Object.assign(DB.centre, d.centre); DB.settings = JSON.parse(JSON.stringify(d.settings)); DB.onboarding.settingsConfirmed = true; S.draft = makeDraft(); audit(`Settings changed: ${changes.join(', ') || 'confirmed'}`); toast('Settings saved and recorded in the audit log.'); },
   'holiday-remove': (el) => { const h = DB.holidays.find(x => x.day === el.dataset.v); openConfirm({ title: `Remove ${esc(h.reason)}?`, body: `Classes on ${dDay(h.day)} will be scheduled again.`, confirm: 'Remove holiday', run: () => { DB.holidays = DB.holidays.filter(x => x.day !== h.day); DB.batches.forEach(b => { if (b.days.includes(DOW[parse(h.day).getDay()]) && !DB.sessions.some(s => s.batchId === b.id && s.date === h.day)) DB.sessions.push({ id: `ses_${b.id}_${h.day}`, batchId: b.id, date: h.day, start: b.start, end: b.end, status: 'scheduled', kind: 'regular' }); }); audit(`Removed holiday ${dShort(h.day)}`); toast('Holiday removed.'); } }); return false; },
   'holiday-save': () => { const f = S.f; DB.holidays.push({ day: f.day, reason: f.reason.trim() }); const gone = DB.sessions.filter(s => s.date === f.day && !Object.keys(currentMarks(s.id)).length); DB.sessions = DB.sessions.filter(s => !gone.includes(s)); audit(`Holiday ${dShort(f.day)} · ${f.reason.trim()} · ${gone.length} classes removed`); S.sheet = null; toast(`Holiday added; ${plural(gone.length, 'class', 'classes')} removed.`); },
@@ -1322,7 +1321,7 @@ document.addEventListener('submit', e => {
       if (user.status !== 'active') { u.err = 'This account is deactivated. Ask your centre owner to reactivate it.'; render(); return; }
       signIn(user); return;
     }
-    const db = emptyCentre({ centreName: u.centreName.trim(), ownerName: u.ownerName.trim(), phone: '+91' + u.phone, email: u.email.trim().toLowerCase(), pw: u.pw, prefix: u.prefix, city: (u.city || '').trim() });
+    const db = emptyCentre({ centreName: u.centreName.trim(), ownerName: u.ownerName.trim(), phone: '+91' + u.phone, email: u.email.trim().toLowerCase(), pw: u.pw, prefix: suggestPrefix(u.centreName) || 'TL', city: (u.city || '').trim() });
     DB = db; S.idem = {}; S.phoneOpen = false; S.signedIn = true; S.role = 'OWNER'; S.userId = 'u_new'; S.ui = {}; S.draft = null;
     toast(`Welcome! ${db.centre.name} is ready, with a free trial until ${dShort(db.centre.trialEndsOn)}. We've emailed a link to verify ${db.users[0].email}.`); go('#dashboard');
   }
@@ -1339,8 +1338,6 @@ function bindValue(el) {
   for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
   const k = keys[keys.length - 1], numeric = root === 'd' && typeof obj[k] === 'number';
   obj[k] = numeric ? (v === '' ? '' : Number(v)) : v;
-  if (path === 'v.centreName' && S.route === 'signup' && !U().prefixTouched) U().prefix = suggestPrefix(v);
-  if (path === 'v.prefix') U().prefixTouched = true;
 }
 document.addEventListener('input', e => { const el = e.target; if (!el.dataset.bind) return; bindValue(el); if (el.dataset.live != null) render(); });
 document.addEventListener('change', e => {

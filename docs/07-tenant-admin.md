@@ -48,7 +48,7 @@ Rules: permissions are an enum in code; the matrix above is the single source an
 | Quiet hours | 20:00–08:00 | no sends inside | ✓ |
 | Weekly digest | on, Sunday 10:00 | can be off or a different day | ✓ |
 | Sibling discount | off | % applied when parent numbers match | ✓ |
-| Receipt prefix | from name | immutable after first receipt | ✓ |
+| Receipt prefix | generated from the centre name at registration | editable in Settings until the first receipt, then immutable | ✓ |
 | Message language | English | Bengali/Hindi when templates exist | ✓ |
 | Payment link fee handling | absorb | absorb or pass through as a line | ✓ |
 | Holidays | national list | sessions skipped | ✓ |

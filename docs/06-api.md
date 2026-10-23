@@ -5,7 +5,7 @@ Base URL `/v1`. JSON. Auth: `Authorization: Bearer <access token>`; the centre c
 | Method and path | Role | Purpose | Notes |
 |---|---|---|---|
 | POST /signup/otp | public | start registration: OTP to the owner's WhatsApp | 3 registrations per phone, email and IP per day; 409 if the phone or email already belongs to a user |
-| POST /signup | public | verify OTP and create centre + owner (trial starts) | body: code, phone, email, password, centreName, ownerName, city?, receiptPrefix; sends the email verification link; returns tokens like /auth/verify |
+| POST /signup | public | verify OTP and create centre + owner (trial starts) | body: code, phone, email, password, centreName, ownerName, city?; the receipt prefix is generated from the name (change it with PATCH /centre until the first receipt); sends the email verification link; returns tokens like /auth/verify |
 | POST /auth/login | public | email + password sign-in | 401 wrong credentials (same message for unknown email); 403 email not verified; 423 locked for 15 min after 5 failures |
 | POST /auth/email/verify | public (signed token) | confirm the email address from the link | |
 | POST /auth/password/forgot, POST /auth/password/reset | public | reset by email link (30 min, single use) or WhatsApp code | always 202 on forgot, so emails can't be probed; reset revokes all sessions |
@@ -15,7 +15,7 @@ Base URL `/v1`. JSON. Auth: `Authorization: Bearer <access token>`; the centre c
 | POST /auth/refresh | cookie | rotate refresh, new access | |
 | POST /auth/logout | any | revoke refresh | |
 | GET /me | any | user, centre, role, permissions, plan snapshot | SPA bootstrap |
-| GET/PATCH /centre | OWNER | settings | audited |
+| GET/PATCH /centre | OWNER | settings | audited; `receiptPrefix` accepted only until the first receipt (409 after) |
 | GET /centre/whatsapp, POST /centre/whatsapp/connect | OWNER | WhatsApp sender status (`not_connected`, `pending`, `connected`) and start embedded signup | held messages released on `connected` |
 | GET/POST /users, PATCH /users/{id} | OWNER | staff management | role change bumps token version |
 | GET/POST /batches, GET/PATCH /batches/{id} | OWNER (read: all staff) | batches | fee change applies next month; list items carry `activeStudents`, `attendanceRate30d`, `testsCount`, `nextSessionAt`, `todaySession` (`none`, `to_mark`, `marked`) |

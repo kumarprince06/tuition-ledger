@@ -35,7 +35,7 @@ Demo sign-in: WhatsApp numbers `98300 00001` (owner), `…02` (teacher), `…04`
 - **Consent belongs to the parent's phone**, so siblings share it and get one message (STU-3, STU-4).
 - **Permissions come from the 07 matrix**: teachers see balances only and record cash only for their own batches; accountants can read attendance but not mark it.
 - **Message statuses** are shown as they are: delivered, held (no WhatsApp number yet), skipped (paid before send, no consent, opted out), failed.
-- **Registration** (CEN-6, ADR-0018/0019): centre name and receipt prefix → owner name, email, WhatsApp number and password → WhatsApp code. The centre then lands on the onboarding checklist; parent messages are held until its own WhatsApp number is approved (CEN-7).
+- **Registration** (CEN-6, ADR-0018/0019): centre name and city → owner name, email, WhatsApp number and password → WhatsApp code. The receipt prefix is generated from the name and can be changed in Settings until the first receipt. The centre then lands on the onboarding checklist; parent messages are held until its own WhatsApp number is approved (CEN-7).
 - **Sign-in** by WhatsApp code or email + password, with a lock after 5 wrong passwords, forgot/reset, and a "Sign-in methods" card in My account (CEN-8).
 - **Defaults chosen** where the docs were silent: late counts as attended; paused students are left off attendance lists; accountants may pause students (07 already allows it). Change these in 02-srs.md if the client decides otherwise.
 - **Removed:** "Remind everyone outstanding". Automatic reminders on the due day, +3 and +7 already do this without bypassing the schedule and quiet hours.
