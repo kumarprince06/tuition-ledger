@@ -53,7 +53,7 @@ Full permission matrix: 07-tenant-admin.md.
 
 ## 3. Scope
 
-**MVP (sprints 1–4):** centre setup; roles; batches and sessions; students with consent; attendance; fee engine with pro-ration, discounts, one-off charges; payments by cash, Razorpay link, manual UPI; student ledger with gap-free receipts; parent WhatsApp (opt-in, reminders ×3, receipts, weekly digest, keywords); dashboard; statement, outstanding list, CSV exports; platform console basics; batch announcements; session rescheduling; PDF receipt links; calendar feeds and teacher nudges; tests and marks with results sent to parents over WhatsApp.
+**MVP (sprints 1–4):** centre setup, including self-serve registration with an OTP-verified owner and a 30-day trial (ADR-0018); roles; batches and sessions; students with consent; attendance; fee engine with pro-ration, discounts, one-off charges; payments by cash, Razorpay link, manual UPI; student ledger with gap-free receipts; parent WhatsApp (opt-in, reminders ×3, receipts, weekly digest, keywords); dashboard; statement, outstanding list, CSV exports; platform console basics; batch announcements; session rescheduling; PDF receipt links; calendar feeds and teacher nudges; tests and marks with results sent to parents over WhatsApp.
 
 **Sprint 5 and after:** platform billing and plan limits, CSV import, data deletion, Bengali templates; later: bank statement import, teacher payroll share, parent-initiated pause/leave, exam marks.
 

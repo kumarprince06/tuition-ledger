@@ -2,6 +2,16 @@
 
 Apply these in order if you maintain a hand-edited copy.
 
+## 2026-10-24 — self-serve registration, backend gaps found by the prototype, v2 static design
+- NEW `adr/0018-self-serve-signup.md` and `adr/0019-email-password-login.md` (partly supersedes ADR-0009); rows in `adr/README.md`; ADR-0009 status line.
+- Registration takes centre name, owner name, email, WhatsApp number and password (the receipt prefix is generated from the name and editable in Settings until the first receipt); sign-in by WhatsApp code or email + password (CEN-2, CEN-6, CEN-8); `POST /auth/login`, email verification, password reset, `PATCH /me/credentials`; `users` credential columns and `auth_tokens`; threats and controls in `11-security-privacy.md`; R16.
+- `02-srs.md`: CEN-6 (self-serve registration), CEN-7 (parent messages held until the centre's WhatsApp number is approved); ATT-1 now states the roster rule and that late counts as attended.
+- `06-api.md` + `api/openapi.yaml`: `POST /signup/otp`, `POST /signup`, `GET /centre/whatsapp`, `GET /fee-runs/{period}/preview`, `POST /adjustments`; students list filters `hasBalance`, `consent` and fields `batchIds`, `attendanceRate30d`; batch list summary fields.
+- `05-data-model.md`: `centres.whatsapp_status`, `trial_ends_on`, `signup_source`; `users.email`; outbox status `held`.
+- `07-tenant-admin.md` §4: onboarding step 2 "WhatsApp Business number connected".
+- `14-risks.md`: R14 (WhatsApp approval stalls new centres), R15 (abusive registrations).
+- NEW `design/prototype.html` (v2 static design) and `design/README.md` (UX and backend-alignment decisions).
+
 ## 2026-10-23 (c) — announcements, rescheduling, PDF receipts, phase 2–4 roadmap, recordings add-on, multilingual
 - NEW `15-roadmap.md`: phases 1–4 with exit criteria, items, SRS IDs and sizes; recordings add-on design; multilingual scope; permanent exclusions.
 - NEW `adr/0017-recordings-addon.md`; row added to `adr/README.md`.

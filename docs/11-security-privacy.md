@@ -8,6 +8,9 @@
 | Teacher escalates to money actions | Permission matrix enforced in services; teacher scoping predicate |
 | Stolen phone with an active session | Owner deactivates user → refresh dies now, access within 15 min |
 | OTP brute force | 3 attempts per challenge, 5 sends per hour per phone, Redis-backed |
+| Password guessing and credential stuffing | Argon2id hashes; common/breached password list at registration and change; 5 failures per account in 15 min lock password sign-in and notify on WhatsApp; per-IP rate limit on /auth/login; one error message for wrong email or password |
+| Password reset abuse | /auth/password/forgot always answers 202; single-use reset tokens stored hashed, 30-minute expiry; reset and change revoke every session |
+| Shared staff passwords | Each person has their own account; owners see last sign-in per user and can deactivate; WhatsApp-code sign-in stays available so nobody needs to share |
 | Forged webhook creates a payment | Signature verification (Meta, Razorpay); event store by provider ID; amounts taken from the provider payload, never the client |
 | Replayed webhook double-credits | Unique (provider, event_id) + payment idempotency |
 | Message spam to parents | Consent required; STOP honoured; per-plan caps; one send-now per parent per day |

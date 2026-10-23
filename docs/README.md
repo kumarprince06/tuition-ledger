@@ -21,6 +21,7 @@ Every document here exists so that a developer can take a ticket from `09-sprint
 | 14 | [Risks, assumptions, open questions](14-risks.md) | PM | sprint planning |
 | 15 | [Roadmap beyond the MVP](15-roadmap.md) | PM | any "can it also…" conversation |
 | 16 | [Work estimation and build order](16-work-estimation.md) + [workbook](estimation/work-estimation.xlsx) | PM + tech lead | sprint planning, status updates |
+| Design | [v2 static prototype](design/prototype.html) + [design notes](design/README.md) | PM + frontend | any screen |
 | ADR | [Architecture decision records](adr/) | tech lead | challenging a design choice |
 
 ## How these documents are used

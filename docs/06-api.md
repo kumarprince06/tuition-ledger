@@ -4,18 +4,25 @@ Base URL `/v1`. JSON. Auth: `Authorization: Bearer <access token>`; the centre c
 
 | Method and path | Role | Purpose | Notes |
 |---|---|---|---|
+| POST /signup/otp | public | start registration: OTP to the owner's WhatsApp | 3 registrations per phone, email and IP per day; 409 if the phone or email already belongs to a user |
+| POST /signup | public | verify OTP and create centre + owner (trial starts) | body: code, phone, email, password, centreName, ownerName, city?; the receipt prefix is generated from the name (change it with PATCH /centre until the first receipt); sends the email verification link; returns tokens like /auth/verify |
+| POST /auth/login | public | email + password sign-in | 401 wrong credentials (same message for unknown email); 403 email not verified; 423 locked for 15 min after 5 failures |
+| POST /auth/email/verify | public (signed token) | confirm the email address from the link | |
+| POST /auth/password/forgot, POST /auth/password/reset | public | reset by email link (30 min, single use) or WhatsApp code | always 202 on forgot, so emails can't be probed; reset revokes all sessions |
+| PATCH /me/credentials | any | add or change email, set or change password (current password or a fresh WhatsApp code required) | re-verifies a new email; revokes other sessions |
 | POST /auth/otp | public | start OTP | 5 per hour per phone |
 | POST /auth/verify | public | exchange OTP for tokens | sets refresh cookie |
 | POST /auth/refresh | cookie | rotate refresh, new access | |
 | POST /auth/logout | any | revoke refresh | |
 | GET /me | any | user, centre, role, permissions, plan snapshot | SPA bootstrap |
-| GET/PATCH /centre | OWNER | settings | audited |
+| GET/PATCH /centre | OWNER | settings | audited; `receiptPrefix` accepted only until the first receipt (409 after) |
+| GET /centre/whatsapp, POST /centre/whatsapp/connect | OWNER | WhatsApp sender status (`not_connected`, `pending`, `connected`) and start embedded signup | held messages released on `connected` |
 | GET/POST /users, PATCH /users/{id} | OWNER | staff management | role change bumps token version |
-| GET/POST /batches, GET/PATCH /batches/{id} | OWNER (read: all staff) | batches | fee change applies next month |
+| GET/POST /batches, GET/PATCH /batches/{id} | OWNER (read: all staff) | batches | fee change applies next month; list items carry `activeStudents`, `attendanceRate30d`, `testsCount`, `nextSessionAt`, `todaySession` (`none`, `to_mark`, `marked`) |
 | GET /batches/{id}/sessions?from&to | staff | sessions | |
 | POST /sessions, PATCH /sessions/{id} | TEACHER own / OWNER | extra session, cancel | |
 | GET /sessions/{id}/attendance, PUT /sessions/{id}/attendance | TEACHER own / OWNER | read and mark | PUT is full replacement; within 7 days |
-| GET/POST /students, GET/PATCH /students/{id} | OWNER, ACCOUNTANT (read: TEACHER own batches) | students | PATCH status → status_changes |
+| GET/POST /students, GET/PATCH /students/{id} | OWNER, ACCOUNTANT (read: TEACHER own batches) | students | PATCH status → status_changes; list filters `q`, `status`, `batchId`, `hasBalance`, `consent`; list items carry `batchIds`, `balancePaise`, `attendanceRate30d` |
 | POST /students/import | OWNER | CSV import with dry-run flag | plan feature |
 | DELETE /students/{id}/personal-data | OWNER | anonymise | audited |
 | GET /students/{id}/ledger | OWNER, ACCOUNTANT | lines + running balance | |
@@ -23,6 +30,8 @@ Base URL `/v1`. JSON. Auth: `Authorization: Bearer <access token>`; the centre c
 | POST /enrolments, PATCH /enrolments/{id} | OWNER | enrol, end | capacity check |
 | GET /charges?student&period&status | OWNER, ACCOUNTANT | charges | |
 | POST /charges | OWNER, ACCOUNTANT | one-off charge | |
+| POST /adjustments | OWNER, ACCOUNTANT | discount, credit or correction on a student (signed amount, reason required) | adds a ledger line; never edits |
+| GET /fee-runs/{period}/preview | OWNER | dry run: every charge the job would create, with its computation | writes nothing |
 | POST /fee-runs/{period}/run | OWNER | run or resume the fee job manually | idempotent |
 | GET /fee-runs/{period} | OWNER | progress | |
 | POST /payments | OWNER, ACCOUNTANT, TEACHER (cash only) | record payment | 409 on near-duplicate unless confirmDuplicate |
