@@ -79,13 +79,14 @@ Rules: permissions are an enum in code; the matrix above is the single source an
 ## 4. Onboarding checklist (shown to a new owner until complete)
 
 1. Centre settings confirmed (timezone, due day, quiet hours)
-2. First batch created with a fee
-3. First teacher invited
-4. Students added (CSV import on Starter and above)
-5. Opt-in messages sent and at least one consent received
-6. Payment account connected (Razorpay) or marked "cash and UPI only"
-7. Test payment recorded and receipt message received on the owner's own phone
-8. First fee run previewed (dry run shows every charge before the 1st)
+2. WhatsApp Business number connected in the centre's name (Meta review takes 2–5 days; until then parent messages are held, everything else works)
+3. First batch created with a fee
+4. First teacher invited
+5. Students added (CSV import on Starter and above)
+6. Opt-in messages sent and at least one consent received
+7. Payment account connected (Razorpay) or marked "cash and UPI only"
+8. Test payment recorded and receipt message received on the owner's own phone
+9. First fee run previewed (dry run shows every charge before the 1st)
 
 ## 5. Platform admin console (what Tuition Ledger staff see)
 

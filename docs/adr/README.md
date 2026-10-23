@@ -21,3 +21,5 @@ Format: context → decision → consequences → alternatives. Status is Accept
 | 0015 | Calendar: iCal feeds and WhatsApp nudges first, Google OAuth sync later |
 | 0016 | Test results and assessments as structured templates, one child per message, no ranks |
 | 0017 | Recorded class library as a paid add-on billed through the fee engine |
+| 0018 | Self-serve centre registration with OTP-verified owner; WhatsApp sender connected during onboarding |
+| 0019 | Email + password as a second sign-in method alongside WhatsApp codes (partly supersedes 0009) |

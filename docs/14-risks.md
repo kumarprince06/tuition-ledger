@@ -16,6 +16,9 @@
 | R11 | A teacher comment is hurtful or a mark is sent to the wrong parent | Low | Serious reputation harm | Comments bounded and owner-reviewed by default; one child per message with student ID in the dedupe key; correction flow; banned-words check | PM |
 | R12 | Announcements recreate the group-message problem (spam) | Medium | Opt-outs rise | 300-character limit, per-plan caps, owner setting to restrict senders, STOP honoured | PM |
 | R13 | Recorded-class add-on infrastructure cost exceeds revenue | Medium | Loss on the add-on | Provider cost metered per centre; add-on priced per viewer plus storage; auto-disable on overdue invoice | PM |
+| R14 | Self-registered centres stall at "connect WhatsApp" (Meta business verification takes days or fails) | High | Trials that never message a parent, churn | Checklist step with status and help; everything else usable meanwhile; held messages released on approval; platform console flags centres stuck in `pending` for 5 days | PM |
+| R15 | Fake or abusive registrations consume OTP and WhatsApp costs | Medium | Cost, noise in the console | OTP before any row is created; 3 registrations per phone and per IP per day; console flags centres with no activity after 7 days | Tech lead |
+| R16 | Verification and reset emails land in spam or never arrive | Medium | Owners can't verify email or reset a password | Transactional email provider with SPF/DKIM/DMARC on our domain; WhatsApp code always works as a fallback for sign-in and reset | Tech lead |
 | R9 | Underpricing | Medium | Revenue | Costs tracked per centre monthly; plans revisited at 10 centres | PM |
 
 ## Assumptions

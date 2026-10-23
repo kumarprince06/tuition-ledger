@@ -26,18 +26,24 @@ erDiagram
 ## Tenant tables
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS citext;
 CREATE TABLE centres (
   id text PRIMARY KEY, name text NOT NULL, address text, timezone text NOT NULL DEFAULT 'Asia/Kolkata',
   due_day smallint NOT NULL CHECK (due_day BETWEEN 1 AND 28), quiet_from time NOT NULL DEFAULT '20:00', quiet_to time NOT NULL DEFAULT '08:00',
-  receipt_prefix text NOT NULL CHECK (receipt_prefix ~ '^[A-Z]{2,4}$'), whatsapp_sender_id text, status text NOT NULL DEFAULT 'active',
+  receipt_prefix text NOT NULL CHECK (receipt_prefix ~ '^[A-Z]{2,4}$'), whatsapp_sender_id text,
+  whatsapp_status text NOT NULL DEFAULT 'not_connected' CHECK (whatsapp_status IN ('not_connected','pending','connected')),
+  trial_ends_on date, signup_source text NOT NULL DEFAULT 'console' CHECK (signup_source IN ('console','self')), status text NOT NULL DEFAULT 'active',
   created_at timestamptz NOT NULL DEFAULT now());
 
 CREATE TABLE users (
   id text PRIMARY KEY, centre_id text NOT NULL REFERENCES centres, phone text NOT NULL UNIQUE, name text NOT NULL,
+  email citext UNIQUE, email_verified_at timestamptz, password_hash text, -- Argon2id; null = WhatsApp-code sign-in only
+  failed_logins smallint NOT NULL DEFAULT 0, locked_until timestamptz,
   role text NOT NULL CHECK (role IN ('OWNER','TEACHER','ACCOUNTANT')), status text NOT NULL DEFAULT 'active', token_version int NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX ON users (centre_id);
 
+CREATE TABLE auth_tokens (id bigserial PRIMARY KEY, user_id text NOT NULL REFERENCES users, kind text NOT NULL CHECK (kind IN ('email_verify','password_reset')), token_hash text NOT NULL UNIQUE, expires_at timestamptz NOT NULL, used_at timestamptz);
 CREATE TABLE settings (centre_id text REFERENCES centres, key text, value jsonb NOT NULL, updated_by text, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (centre_id, key));
 CREATE TABLE audit_log (id bigserial PRIMARY KEY, centre_id text NOT NULL, user_id text, action text NOT NULL, entity text, entity_id text, before_json jsonb, after_json jsonb, at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX ON audit_log (centre_id, at DESC);
@@ -129,7 +135,8 @@ CREATE TABLE message_templates (key text, language text, provider_template_name 
 CREATE TABLE outbox_messages (
   id bigserial PRIMARY KEY, centre_id text NOT NULL, channel text NOT NULL DEFAULT 'whatsapp', recipient text NOT NULL, template_key text NOT NULL, language text NOT NULL,
   variables jsonb NOT NULL, dedupe_key text, not_before timestamptz NOT NULL DEFAULT now(), attempts smallint NOT NULL DEFAULT 0,
-  status text NOT NULL DEFAULT 'queued', last_error text, provider_msg_id text, delivery_status text, created_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz);
+  status text NOT NULL DEFAULT 'queued', last_error text, -- queued | held (no WhatsApp sender yet) | sent | failed | skipped
+  provider_msg_id text, delivery_status text, created_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz);
 CREATE UNIQUE INDEX outbox_dedupe ON outbox_messages (dedupe_key) WHERE dedupe_key IS NOT NULL;
 CREATE INDEX outbox_relay ON outbox_messages (status, not_before) WHERE status = 'queued';
 CREATE INDEX ON outbox_messages (centre_id, created_at DESC);
