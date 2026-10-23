@@ -19,6 +19,19 @@ Multi-tenant SaaS for small coaching centres (50–300 students): attendance, fe
 
 Java 21 · Maven · Spring Boot 4 · Spring Modulith · PostgreSQL 16 · Redis · React 18 + TypeScript + Vite · WhatsApp Cloud API · Razorpay · Docker Compose on one VPS. No message broker; a Postgres outbox handles delivery ([ADR-0003](docs/adr/0003-outbox-no-broker.md)).
 
+## Run the backend locally
+
+Needs JDK 21, PostgreSQL 16 and Redis running locally, and Docker for tests.
+
+```bash
+cd backend
+cp .env.example .env      # fill in DB_URL, DB_USERNAME, DB_PASSWORD; .env is git-ignored
+./mvnw spring-boot:run    # http://localhost:${SERVER_PORT}/actuator/health
+./mvnw test               # tests use Testcontainers, not your local database
+```
+
+The DB user must not be a superuser, or row-level security is bypassed ([ADR-0002](docs/adr/0002-shared-db-tenancy.md)).
+
 ## Documentation
 
 Start at [docs/README.md](docs/README.md). Key documents:
