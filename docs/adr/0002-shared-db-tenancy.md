@@ -1,0 +1,5 @@
+# ADR-0002 Shared database with centre_id, Hibernate filter and row-level security
+**Context.** Hundreds of small tenants, each with under 50 MB of data; migrations must stay cheap; isolation must be provable.
+**Decision.** One schema; every tenant table has `centre_id`. A request-scoped TenantContext from the JWT enables a Hibernate filter on `@TenantScoped` entities and sets `app.centre_id` so Postgres row-level security policies apply as a second guard. A test asserts every entity with `centre_id` is `@TenantScoped` and every native query is allow-listed.
+**Consequences.** One migration per release; backups and restores are simple; cross-tenant leakage requires defeating two independent mechanisms. Per-tenant export is a filtered dump. Risk: a hot tenant affects others; mitigated by indexes on (centre_id, …) and, later, moving one tenant to its own datasource (the filter design permits a routing datasource).
+**Alternatives.** Schema-per-tenant: 300 migrations per release and connection-pool fragmentation. Database-per-tenant: cost and ops out of proportion.

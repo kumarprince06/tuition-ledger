@@ -1,0 +1,37 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Java / Gradle (backend)
+.gradle/
+build/
+out/
+bin/
+*.class
+*.log
+hs_err_pid*
+
+# Node / Vite (frontend)
+node_modules/
+dist/
+coverage/
+*.local
+.eslintcache
+
+# Docker Compose local data
+docker-data/
+pgdata/
+
+# Claude Code local settings
+.claude/settings.local.json
