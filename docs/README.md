@@ -20,6 +20,7 @@ Every document here exists so that a developer can take a ticket from `09-sprint
 | 13 | [Ways of working and definition of done](13-ways-of-working.md) | everyone | first commit |
 | 14 | [Risks, assumptions, open questions](14-risks.md) | PM | sprint planning |
 | 15 | [Roadmap beyond the MVP](15-roadmap.md) | PM | any "can it also…" conversation |
+| 16 | [Work estimation and build order](16-work-estimation.md) + [workbook](estimation/work-estimation.xlsx) | PM + tech lead | sprint planning, status updates |
 | ADR | [Architecture decision records](adr/) | tech lead | challenging a design choice |
 
 ## How these documents are used
