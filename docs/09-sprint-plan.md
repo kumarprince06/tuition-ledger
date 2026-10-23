@@ -30,7 +30,7 @@ gantt
 
 | ID | Ticket | Role | Size | SRS | LLD | Depends | Acceptance |
 |---|---|---|---|---|---|---|---|
-| S1-01 | Repo, Gradle (Kotlin DSL), Spring Boot 4.1, Modulith skeleton with 9 empty modules and the module-boundary test | BE | 1 hd | — | 04 §0 | — | `./gradlew test` passes `ModularityTests`; CI runs on push |
+| S1-01 | Repo, Maven (wrapper), Spring Boot 4.1, Modulith skeleton with 9 empty modules and the module-boundary test | BE | 1 hd | — | 04 §0 | — | `./mvnw test` passes `ModularityTests`; CI runs on push |
 | S1-02 | Docker Compose: app, Postgres 16, Redis, Prometheus, Grafana, Mailpit-style WhatsApp fake UI | BE | 1 hd | — | 03 §2 | S1-01 | `make up` brings the stack; `/actuator/health` green |
 | S1-03 | Flyway baseline with tenant tables from 05 (centres, users, settings, audit_log, batches, sessions, students, enrolments, attendance, holidays) incl. RLS policies and the `tl_app` role grants | BE | 2 hd | — | 05 | S1-01 | Migrations apply on empty DB and are idempotent; `REVOKE` verified by a test that tries an UPDATE on audit_log and fails |
 | S1-04 | Shared kernel: `Money`, `Ids` (ULID), `Clock` bean, `TenantContext`, `CentreTime`, problem-details error handler | BE | 2 hd | NFR-7 | 04 §1, §11 | S1-01 | Unit tests; ArchUnit rule forbidding float/double in money packages |

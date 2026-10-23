@@ -13,8 +13,8 @@ Thumbs.db
 *.pem
 *.key
 
-# Java / Gradle (backend)
-.gradle/
+# Java / Maven (backend)
+target/
 build/
 out/
 bin/
