@@ -17,7 +17,7 @@ Multi-tenant SaaS for small coaching centres (50–300 students): attendance, fe
 
 ## Planned stack
 
-Java 21 · Spring Boot 4 · Spring Modulith · PostgreSQL 16 · Redis · React 18 + TypeScript + Vite · WhatsApp Cloud API · Razorpay · Docker Compose on one VPS. No message broker; a Postgres outbox handles delivery ([ADR-0003](docs/adr/0003-outbox-no-broker.md)).
+Java 21 · Maven · Spring Boot 4 · Spring Modulith · PostgreSQL 16 · Redis · React 18 + TypeScript + Vite · WhatsApp Cloud API · Razorpay · Docker Compose on one VPS. No message broker; a Postgres outbox handles delivery ([ADR-0003](docs/adr/0003-outbox-no-broker.md)).
 
 ## Documentation
 
