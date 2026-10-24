@@ -98,14 +98,16 @@ Rules enforced by Modulith tests: a module may call another module only through 
 - Writes set `centre_id` from the context in a JPA `@PrePersist`; a mismatch throws.
 - Postgres row-level security is enabled as a second line: the app sets `SET LOCAL app.centre_id` at transaction start and policies compare it. If the Hibernate filter is ever bypassed by a native query, RLS still blocks cross-tenant reads.
 - A test scans the entity model: any entity with `centre_id` must carry `@TenantScoped`; any repository with a native query must be in the allow-list with a reviewed reason.
-- Platform tables (plans, usage, invoices_tl) are not tenant-scoped and are reachable only by PLATFORM_ADMIN.
+- With no tenant context, `app.centre_id` is null and every policy returns no rows (fails closed). The app connects as `tl_app`, which owns no table; `tl_migrate` owns the schema, because Postgres skips policies for the owner.
+- Root tables (`centres`, `users`, `platform_admins`, `auth_tokens`) and platform tables (plans, subscriptions, usage, invoices_tl) have no row-level security. Root tables are reachable only through the tenancy module and platform tables only through the platform module (Modulith test); the platform API is reachable only by PLATFORM_ADMIN.
+- A person is a global `users` row; their role at a centre is a `memberships` row, which is a tenant table (ADR-0020). Cross-centre jobs list `centres`, then process one centre per transaction with the context set to it.
 
 ## 5. Authentication and authorisation
 
 - Phone + OTP (Redis-backed challenge, 5-minute TTL, 3 attempts, 5 sends per hour per phone).
-- Access token: JWT, 15 minutes, claims {sub, centreId, role, ver}. Refresh token: opaque, 30 days, httpOnly cookie, rotated on use, stored hashed; `ver` bumps on role change or deactivation so old access tokens die within 15 minutes and refresh fails immediately.
+- Access token: JWT, 15 minutes, claims {sub, centreId, role, ver}, for one centre. Sign-in identifies the person; with one active membership the token is issued for that centre, with several the SPA asks and calls `POST /auth/centre`; switching centre issues a new token. Platform admins get a token with `role = PLATFORM_ADMIN` and no `centreId`. Refresh token: opaque, 30 days, httpOnly cookie, rotated on use, stored hashed; `ver` bumps on role change or deactivation so old access tokens die within 15 minutes and refresh fails immediately.
 - Authorisation: `@PreAuthorize` on application services using a permission enum (07 lists the matrix); TEACHER batch scoping is a query predicate, not a check in the UI.
-- Webhooks: WhatsApp (X-Hub-Signature-256) and Razorpay (X-Razorpay-Signature) verified against per-environment secrets before parsing; events stored by provider event ID before processing.
+- Webhooks: WhatsApp (X-Hub-Signature-256) verified against the per-environment app secret; Razorpay (X-Razorpay-Signature) arrives at `/webhooks/razorpay/{centreId}` and is verified against that centre's own webhook secret (ADR-0021). Both are verified before parsing and stored by provider event ID before processing.
 
 ## 6. Key runtime flows
 

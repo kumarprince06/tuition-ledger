@@ -23,3 +23,5 @@ Format: context → decision → consequences → alternatives. Status is Accept
 | 0017 | Recorded class library as a paid add-on billed through the fee engine |
 | 0018 | Self-serve centre registration with OTP-verified owner; WhatsApp sender connected during onboarding |
 | 0019 | Email + password as a second sign-in method alongside WhatsApp codes (partly supersedes 0009) |
+| 0020 | People are global users; their role at a centre is a membership |
+| 0021 | Parent fees settle only to the centre's own accounts |

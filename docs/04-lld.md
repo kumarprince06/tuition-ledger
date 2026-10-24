@@ -34,7 +34,9 @@ Rules: `Money` is the only money type outside the fee engine's BigDecimal pro-ra
 
 ## 2. tenancy
 
-Entities: `Centre`, `User`, `Setting` (key/value with type and audit), `AuditEntry`.
+Entities: `Centre`, `User` (the person; no centre, no role), `Membership` (user, centre, role, status; `@TenantScoped`), `PlatformAdmin`, `Setting` (key/value with type and audit), `AuditEntry` (ADR-0020).
+
+`CentreProvisioningService.provision(centreName, owner)` backs both `POST /signup` and the platform console: in one transaction it generates the centre id, sets `TenantContext` to it, inserts the centre (receipt prefix generated from the name), finds or creates the owner's `User`, inserts an OWNER `Membership`, default settings, the receipt counter, and a `trialing` Starter subscription with `trial_ends_on = today + 30` through the platform module's API.
 
 ```mermaid
 sequenceDiagram
@@ -49,8 +51,14 @@ sequenceDiagram
   App->>Auth: POST /auth/verify {phone, code, device}
   Auth->>S: verify
   S->>R: GET + INCR attempts
-  S-->>Auth: user, centre, role
-  Auth-->>App: {accessToken(15m)} + Set-Cookie refresh(30d, httpOnly, rotated)
+  S-->>Auth: user + active memberships
+  alt one membership
+    Auth-->>App: {accessToken(15m, centre)} + Set-Cookie refresh(30d, httpOnly, rotated)
+  else several
+    Auth-->>App: {centres: [...], selectionToken(5m)}
+    App->>Auth: POST /auth/centre {selectionToken or refresh, centreId}
+    Auth-->>App: {accessToken(15m, centre)} + Set-Cookie refresh
+  end
 ```
 
 `PermissionEvaluator` maps role → set of `Permission` (07). Services declare `@PreAuthorize("hasPermission(null, 'CHARGE_WRITE')")`. Teacher batch scoping: `BatchAccess.assertCanAccess(batchId)` reads `batches.teacher_id` and the role.
@@ -165,7 +173,7 @@ Inbound: webhook → `inbound_messages` → `InboundRouter` matches keyword (cas
 
 ## 8. integrations
 
-`WhatsAppClient` (interface) with `MetaCloudWhatsAppClient` and `FakeWhatsAppClient` (dev/test; records sends, can simulate delivery webhooks). `RazorpayClient` likewise with a fake. Both wrapped in Resilience4j: circuit breaker (50% failures over 20 calls opens for 60 s), time limiter 10 s, retry only on idempotent calls. Webhook controllers verify signatures, insert into `webhook_events` (unique provider+event_id → duplicate returns 200 immediately), then dispatch.
+`WhatsAppClient` (interface) with `MetaCloudWhatsAppClient` and `FakeWhatsAppClient` (dev/test; records sends, can simulate delivery webhooks). `RazorpayClient` likewise with a fake. Both wrapped in Resilience4j: circuit breaker (50% failures over 20 calls opens for 60 s), time limiter 10 s, retry only on idempotent calls. `RazorpayClient` is built per centre from `centre_payment_accounts` (decrypted in memory, never logged); there is no platform-wide Razorpay client for parent fees (ADR-0021). `UpiLinks.of(centre, amount, note)` builds the `upi://pay` link and QR for the centre's own UPI ID. Webhook controllers verify signatures (Razorpay with the centre's own webhook secret from the path's `centreId`), insert into `webhook_events` (unique provider+event_id → duplicate returns 200 immediately), then dispatch.
 
 ## 9. reporting
 
@@ -173,7 +181,7 @@ Dashboard queries read `mv_student_balances`, `charges`, `attendance` with centr
 
 ## 10. platform
 
-`Plan{code, priceMonthlyPaise, includedStudents, overagePerStudentPaise, messageCap, features}`; `Subscription{centreId, plan, status(active|grace|readonly|cancelled), currentPeriodStart, razorpaySubscriptionId}`; `Usage{centreId, period, activeStudents, messagesSent, payments}`; `PlatformInvoice`.
+`Plan{code, priceMonthlyPaise, includedStudents, overagePerStudentPaise, messageCap, features}`; `Subscription{centreId, plan, status(trialing|active|past_due|read_only|suspended|cancelled), trialEndsOn, currentPeriodStart, razorpaySubscriptionId}`; `Usage{centreId, period, activeStudents, messagesSent, payments}`; `PlatformInvoice`.
 
 `PlanGuard.check(centreId, Feature)` is called by application services for gated features (payment links, CSV import, extra teachers) and by `StudentService.add` for the student limit; it reads a cached plan snapshot (Redis, 60 s).
 

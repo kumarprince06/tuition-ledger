@@ -4,7 +4,12 @@
 
 | Threat | Control |
 |---|---|
-| Staff of centre A reads centre B's data | Hibernate filter + RLS + isolation tests (ADR-0002); TenantMismatch → 404 |
+| Staff of centre A reads centre B's data | Hibernate filter + RLS + isolation tests (ADR-0002); app runs as `tl_app`, which owns no table, so RLS always applies; no tenant context → no rows; TenantMismatch → 404 |
+| A person who works at two centres carries data or rights from one to the other | One access token = one centre and that membership's role; switching issues a new token; each centre sees only its own memberships (ADR-0020) |
+| Global `users` table read outside tenancy lists staff of every centre | `users` holds identity only (no student or money data); Modulith test forbids access outside the tenancy module; centre screens read staff through `memberships` |
+| Platform admin account takeover | Platform admins are a separate grant reaching only `/platform/*`; console shows counts only; MFA or company SSO for admins before launch |
+| Forged webhook for another centre | Razorpay webhooks per centre at `/webhooks/razorpay/{centreId}`, verified with that centre's secret; `notes.centre_id` must match (ADR-0021) |
+| Centre's Razorpay secret leaks | AES-GCM encryption, key outside the database; write-only in the API, shown masked; never logged; owner-only, audited; Partner OAuth replaces pasted keys when approved |
 | Teacher escalates to money actions | Permission matrix enforced in services; teacher scoping predicate |
 | Stolen phone with an active session | Owner deactivates user → refresh dies now, access within 15 min |
 | OTP brute force | 3 attempts per challenge, 5 sends per hour per phone, Redis-backed |
@@ -32,6 +37,7 @@
 | Test marks, teacher comments | Personal (minor), sensitive | one child per message, no ranks, never in group posts, append-only history, owner-only export, excluded from the platform console and from logs |
 | Homework files, recordings (phase 2–4) | Personal (minor), copyrighted | signed short-lived links; watermark on video; storage per centre; deleted with the centre |
 | Secrets, tokens | Secret | env vars, hashed refresh tokens, never logged |
+| Centre payment credentials (Razorpay key secret, webhook secret, OAuth tokens) | Secret | AES-GCM in `centre_payment_accounts`, encryption key in env; never returned or logged; deleted when the centre disconnects or is deleted. Tuition Ledger never holds parent money or bank details |
 
 ## 3. Privacy commitments (reflected in the notice shown to parents and owners)
 

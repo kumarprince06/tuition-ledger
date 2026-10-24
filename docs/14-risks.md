@@ -19,6 +19,8 @@
 | R14 | Self-registered centres stall at "connect WhatsApp" (Meta business verification takes days or fails) | High | Trials that never message a parent, churn | Checklist step with status and help; everything else usable meanwhile; held messages released on approval; platform console flags centres stuck in `pending` for 5 days | PM |
 | R15 | Fake or abusive registrations consume OTP and WhatsApp costs | Medium | Cost, noise in the console | OTP before any row is created; 3 registrations per phone and per IP per day; console flags centres with no activity after 7 days | Tech lead |
 | R16 | Verification and reset emails land in spam or never arrive | Medium | Owners can't verify email or reset a password | Transactional email provider with SPF/DKIM/DMARC on our domain; WhatsApp code always works as a fallback for sign-in and reset | Tech lead |
+| R17 | A centre's Razorpay secret leaks (pasted into support chat, logged, or read from a database dump) | Low | Attacker can create links or refunds on that centre's account | AES-GCM encryption with the key outside the database; secrets write-only in the API and never logged; owner-only and audited; move to Razorpay Partner OAuth when approved (ADR-0021) | Tech lead |
+| R18 | Razorpay Partner (OAuth) approval takes months or is refused | Medium | Owners keep pasting keys | Pasted keys work meanwhile; setup guide with screenshots in Settings | PM |
 | R9 | Underpricing | Medium | Revenue | Costs tracked per centre monthly; plans revisited at 10 centres | PM |
 
 ## Assumptions
@@ -42,3 +44,7 @@
 | 2026-10-23 | Cash, Razorpay links and manual UPI all in MVP | client | PRD |
 | 2026-10-23 | First users: a coaching centre with multiple teachers (roles in MVP) | client | PRD |
 | 2026-10-23 | No message broker in MVP | tech lead | ADR-0003 |
+| 2026-10-24 | A person is one global user; their role at each centre is a membership; platform admins are a grant on a user | tech lead | ADR-0020 |
+| 2026-10-24 | Tenant isolation and provisioning are built before authentication; root and platform tables have no RLS; two database roles | tech lead | ADR-0002 |
+| 2026-10-24 | Trial end date lives on `subscriptions`; statuses trialing, active, past_due, read_only, suspended, cancelled | tech lead | 05 |
+| 2026-10-24 | Parent fees go only to the centre's own accounts (cash, UPI ID, own Razorpay); never through Tuition Ledger; Razorpay keys pasted first, Partner OAuth later | client | ADR-0021 |

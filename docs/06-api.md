@@ -12,12 +12,16 @@ Base URL `/v1`. JSON. Auth: `Authorization: Bearer <access token>`; the centre c
 | PATCH /me/credentials | any | add or change email, set or change password (current password or a fresh WhatsApp code required) | re-verifies a new email; revokes other sessions |
 | POST /auth/otp | public | start OTP | 5 per hour per phone |
 | POST /auth/verify | public | exchange OTP for tokens | sets refresh cookie |
+| POST /auth/centre | selection token or cookie | choose or switch centre when the person has several memberships (ADR-0020) | 403 without an active membership there; returns tokens for that centre |
 | POST /auth/refresh | cookie | rotate refresh, new access | |
 | POST /auth/logout | any | revoke refresh | |
-| GET /me | any | user, centre, role, permissions, plan snapshot | SPA bootstrap |
+| GET /me | any | user, current centre, role, permissions, plan snapshot, list of the person's centres | SPA bootstrap; the list drives the centre switcher |
+| POST /centres | any signed-in person | create a further centre owned by the current person | same provisioning as /signup; new trial; the person becomes OWNER there |
 | GET/PATCH /centre | OWNER | settings | audited; `receiptPrefix` accepted only until the first receipt (409 after) |
 | GET /centre/whatsapp, POST /centre/whatsapp/connect | OWNER | WhatsApp sender status (`not_connected`, `pending`, `connected`) and start embedded signup | held messages released on `connected` |
-| GET/POST /users, PATCH /users/{id} | OWNER | staff management | role change bumps token version |
+| GET/POST /users, PATCH /users/{id} | OWNER | staff of this centre (its memberships) | inviting a phone or email that already belongs to a person adds a membership; role change and deactivation act on this centre's membership only and bump token version |
+| GET/PUT /centre/payment-methods | OWNER | UPI ID and payee name; Razorpay key id, key secret, webhook secret (ADR-0021) | secrets write-only, returned masked (`rzp_live_••••AB12`); keys checked against Razorpay before saving; audited |
+| DELETE /centre/payment-methods/razorpay | OWNER | disconnect Razorpay | payment links disabled; audited |
 | GET/POST /batches, GET/PATCH /batches/{id} | OWNER (read: all staff) | batches | fee change applies next month; list items carry `activeStudents`, `attendanceRate30d`, `testsCount`, `nextSessionAt`, `todaySession` (`none`, `to_mark`, `marked`) |
 | GET /batches/{id}/sessions?from&to | staff | sessions | |
 | POST /sessions, PATCH /sessions/{id} | TEACHER own / OWNER | extra session, cancel | |
@@ -60,7 +64,7 @@ Base URL `/v1`. JSON. Auth: `Authorization: Bearer <access token>`; the centre c
 | POST /calendar/google/connect, DELETE /calendar/google | OWNER, TEACHER | OAuth connect/disconnect (post-pilot) | Standard plan |
 | GET/PATCH /subscription | OWNER | plan, usage, upgrade | |
 | POST /webhooks/whatsapp, GET /webhooks/whatsapp | provider | inbound + status; verify challenge | signature verified |
-| POST /webhooks/razorpay | provider | payment events | signature verified |
+| POST /webhooks/razorpay/{centreId} | provider | payment events on the centre's own Razorpay account | signature verified with that centre's webhook secret; `notes.centre_id` must match |
 | GET/POST /platform/centres, PATCH /platform/centres/{id} | PLATFORM_ADMIN | tenant ops | counts only |
 | GET /platform/health | PLATFORM_ADMIN | queues, jobs, breakers | |
 
