@@ -32,11 +32,11 @@ gantt
 |---|---|---|---|---|---|---|---|
 | S1-01 | Repo, Maven (wrapper), Spring Boot 4.1, Modulith skeleton with 9 empty modules and the module-boundary test | BE | 1 hd | — | 04 §0 | — | `./mvnw test` passes `ModularityTests`; CI runs on push |
 | S1-02 | Docker Compose: app, Postgres 16, Redis, Prometheus, Grafana, Mailpit-style WhatsApp fake UI | BE | 1 hd | — | 03 §2 | S1-01 | `make up` brings the stack; `/actuator/health` green |
-| S1-03 | Flyway baseline with tenant tables from 05 (centres, users, settings, audit_log, batches, sessions, students, enrolments, attendance, holidays) incl. RLS policies and the `tl_app` role grants | BE | 2 hd | — | 05 | S1-01 | Migrations apply on empty DB and are idempotent; `REVOKE` verified by a test that tries an UPDATE on audit_log and fails |
+| S1-03 | Flyway baseline from 05: root tables (centres, users, platform_admins, auth_tokens), platform tables (plans with Free/Starter/Standard seed, subscriptions), tenant tables (memberships, centre_payment_accounts, settings, audit_log, batches, sessions, students, enrolments, attendance, holidays) incl. RLS policies; `tl_migrate` owns the schema, the app runs as `tl_app` | BE | 2.5 hd | — | 05, ADR-0002 | S1-01 | Migrations apply on empty DB and are idempotent; `REVOKE` verified by a test that tries an UPDATE on audit_log and fails; `tl_app` owns no table |
 | S1-04 | Shared kernel: `Money`, `Ids` (ULID), `Clock` bean, `TenantContext`, `CentreTime`, problem-details error handler | BE | 2 hd | NFR-7 | 04 §1, §11 | S1-01 | Unit tests; ArchUnit rule forbidding float/double in money packages |
-| S1-05 | Tenancy: `Centre`, `User`, settings, OTP service (Redis), JWT + refresh rotation, `/auth/*`, `/me` | BE | 3 hd | CEN-1, CEN-2, CEN-4 | 04 §2 | S1-03, S1-04 | OTP expiry, 3-attempt lock, refresh rotation and reuse-detection tests; role change bumps token version |
+| S1-05 | Tenancy auth: OTP service (Redis), JWT + refresh rotation, centre selection and switch (`POST /auth/centre`), `/auth/*`, `/me` with the person's centres, platform-admin tokens | BE | 3.5 hd | CEN-2, CEN-4, CEN-5 | 04 §2, ADR-0020 | S1-07 | OTP expiry, 3-attempt lock, refresh rotation and reuse-detection tests; role change bumps token version; one membership → straight in, two → choose; token for centre A refused at centre B |
 | S1-06 | Authorisation: `Permission` enum, role matrix from 07, `@PreAuthorize` wiring, teacher batch scoping predicate, matrix-equality test | BE | 2 hd | CEN-3 | 04 §2, 07 §1 | S1-05 | Test table: every (role, permission) matches 07; a TEACHER on another teacher's batch gets 403 |
-| S1-07 | Tenant isolation: Hibernate filter, `@TenantScoped`, `SET LOCAL app.centre_id`, entity-scan test, native-query allow-list | BE | 2 hd | NFR-8 | 03 §4 | S1-05 | Integration test: two centres, every repository call returns only own rows; RLS blocks a raw query |
+| S1-07 | Tenant isolation and provisioning: Hibernate filter, `@TenantScoped`, `SET LOCAL app.centre_id`, entity-scan test, native-query allow-list; `Centre`, `User`, `Membership`, settings; `CentreProvisioningService` (centre + owner membership + trialing Starter subscription in one transaction). Built before auth: tests set the tenant context | BE | 3 hd | NFR-8, CEN-1, CEN-5 | 03 §4, 04 §2, ADR-0002 | S1-03, S1-04 | Integration test: two centres, every repository call returns only own rows; RLS blocks a raw query; no context → no rows; a failure mid-provisioning leaves no rows; one person holds memberships at two centres with different roles |
 | S1-08 | Academics: batches CRUD, schedule value object, session generation job with holidays, extra/cancel session | BE | 3 hd | BAT-1..3 | 04 §3 | S1-07 | Re-running generation creates no duplicates; holiday removes unmarked future sessions |
 | S1-09 | Students: CRUD, E.164 validation, enrolments with exclusion constraint, status changes (events only; fee effect in S2) | BE | 2 hd | STU-1, ENR-1, ENR-2 | 04 §4 | S1-07 | Overlapping enrolment rejected; capacity override audited |
 | S1-10 | Attendance: mark with supersede, 7-day window, month view query | BE | 2 hd | ATT-1, ATT-2 | 04 §3 | S1-08, S1-09 | Second save keeps history; day-8 edit refused with 409 |
@@ -48,7 +48,7 @@ gantt
 | S1-16 | Ops: nightly `pg_dump` to object storage, restore script, Uptime Kuma, Grafana dashboard v0, alert to phone on health down | BE | 1 hd | NFR-4 | 12 | S1-02 | A restore into a fresh container is demonstrated and logged |
 | S1-17 | QA: test plan matrix for sprint 1 scope; exploratory session on attendance | QA | 1 hd | — | 10 | S1-15 | Findings filed as issues with the bug-table format |
 
-Sprint 1 total: BE 24 hd, FE 8 hd.
+Sprint 1 total: BE 26 hd, FE 8 hd.
 
 ---
 
@@ -94,18 +94,20 @@ Sprint 2 total: BE 18.5 hd, FE 5.5 hd.
 | S3-05 | Consent flow: StudentAdded → opt-in (skip if consent exists for phone), YES → consents, STOP → opt_outs + owner notification | BE | 1.5 hd | STU-3, MSG-7 | 04 §4 | S3-04 | No reminder possible before consent (unit + integration) |
 | S3-06 | Inbound router: DUES, ATTENDANCE, RECEIPT, HELP, unknown → owner notification; Bengali synonym list | BE | 2 hd | MSG-6, ATT-3 | 04 §7 | S3-04 | Reply content tests per keyword; unknown text appears in owner inbox |
 | S3-07 | Receipt on PaymentRecorded (combined sibling handling not needed here), 60-second SLA metric | BE | 1 hd | MSG-2 | 04 §7 | S3-03 | Receipt row enqueued in the listener; timing metric |
-| S3-08 | Razorpay adapter: create payment link, webhook `payment_link.paid` with signature, event store by event id, PaymentService call with provider payment id | BE | 3 hd | PAY-2 | 04 §8, ADR-0006 | S2-07 | Replayed webhook body → one payment; link status updated |
+| S3-08 | Razorpay adapter on the centre's own account: client per centre from `centre_payment_accounts`, create payment link with `reference_id` and notes, webhook `/webhooks/razorpay/{centreId}` verified with that centre's secret, event store by event id, PaymentService call with provider payment id; 15-minute poll of open links as webhook backstop | BE | 3.5 hd | PAY-2, PAY-7 | 04 §8, ADR-0006, ADR-0021 | S2-07 | Replayed webhook body → one payment; another centre's secret → 401; lost webhook recovered by the poll; link status updated |
 | S3-09 | Payment links endpoint with plan gate stub; link short URL in reminders | BE | 1 hd | PAY-2 | 06 | S3-08 | Link created in sandbox |
 | S3-10 | Message log per student endpoint; owner inbox for forwarded replies | BE | 1 hd | MSG-6 | 06 | S3-06 | Log shows template, variables, status |
 | S3-11 | FE: consent status on students (awaiting, given, opted out), resend opt-in, verbal consent with timestamp | FE | 1.5 hd | STU-3 | 06 | S3-05 | States visible and actionable |
 | S3-12 | FE: payment link creation from student page and outstanding list; message log tab; owner inbox | FE | 2 hd | PAY-2, MSG-6 | 06 | S3-09, S3-10 | Link copied/shared; inbox reply box |
 | S3-13 | Templates submitted to Meta for approval (PM task; 3–5 business days) | PM | 0.5 hd | MSG-2 | ADR-0010 | S3-02 | Approval IDs recorded in message_templates |
-| S3-14 | Razorpay account KYC for the pilot centre started (PM task; takes a week) | PM | 0.5 hd | PAY-2 | 08 | — | Live keys available by sprint 4 |
+| S3-14 | Razorpay account KYC for the pilot centre started in the centre's own name (PM task; takes a week); Razorpay Partner (OAuth) application for Tuition Ledger started | PM | 0.5 hd | PAY-2 | 08, ADR-0021 | — | Live keys available by sprint 4 |
 | S3-16 | Batch announcements: endpoint, template, per-parent fan-out via outbox, log per student; auto-announce on session cancel | BE | 1 hd | ANN-1, ANN-2 | 04 §7 | S3-03 | Opt-out skipped; two batches → two messages |
 | S3-17 | FE: announcement composer with recipient count and preview | FE | 0.5 hd | ANN-1 | 06 | S3-16 | Count matches API |
+| S3-18 | Payment methods: `GET/PUT /centre/payment-methods` (UPI ID; Razorpay keys checked against Razorpay, AES-GCM encrypted, masked, audited), `UpiLinks` link + QR in reminders and on the student page | BE | 1.5 hd | PAY-6, PAY-7 | 04 §8, ADR-0021 | S3-08 | Secret never returned; QR decodes to the centre's UPI ID, amount and note |
+| S3-19 | FE: Settings → Payment methods (UPI ID, connect/disconnect Razorpay, webhook URL to copy); UPI QR on the student page | FE | 1 hd | PAY-6, PAY-7 | 06 | S3-18 | Owner only; masked key shown after save |
 | S3-15 | QA: webhook replay, outbox crash, quiet hours, keyword matrix | QA | 1.5 hd | — | 10 | S3-08 | Cases executed; defects filed |
 
-Sprint 3 total: BE 19 hd, FE 4 hd, PM 1 hd.
+Sprint 3 total: BE 21 hd, FE 5 hd, PM 1 hd.
 
 ---
 

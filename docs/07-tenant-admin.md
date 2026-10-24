@@ -6,7 +6,7 @@ A centre owner controls everything about their centre without contacting Tuition
 
 | Permission | OWNER | ACCOUNTANT | TEACHER |
 |---|---|---|---|
-| CENTRE_SETTINGS_WRITE (due day, quiet hours, prefix, holidays, templates language) | ✓ | | |
+| CENTRE_SETTINGS_WRITE (due day, quiet hours, prefix, holidays, templates language, payment methods) | ✓ | | |
 | USER_MANAGE (invite, role, deactivate) | ✓ | | |
 | BATCH_WRITE (create, edit fee, assign teacher, archive) | ✓ | | |
 | BATCH_READ | ✓ | ✓ | own batches |
@@ -50,6 +50,8 @@ Rules: permissions are an enum in code; the matrix above is the single source an
 | Sibling discount | off | % applied when parent numbers match | ✓ |
 | Receipt prefix | generated from the centre name at registration | editable in Settings until the first receipt, then immutable | ✓ |
 | Message language | English | Bengali/Hindi when templates exist | ✓ |
+| UPI ID and payee name | empty | parent UPI payments go straight to the centre's bank; link and QR in reminders (ADR-0021) | ✓ |
+| Razorpay account | not connected | the centre's own key id, key secret and webhook secret; secrets never shown again, only masked; enables payment links | ✓ |
 | Payment link fee handling | absorb | absorb or pass through as a line | ✓ |
 | Holidays | national list | sessions skipped | ✓ |
 | Attendance edit window | 7 days | 1–30 | ✓ |
@@ -84,7 +86,7 @@ Rules: permissions are an enum in code; the matrix above is the single source an
 4. First teacher invited
 5. Students added (CSV import on Starter and above)
 6. Opt-in messages sent and at least one consent received
-7. Payment account connected (Razorpay) or marked "cash and UPI only"
+7. Centre's UPI ID added, and optionally the centre's own Razorpay account connected; fees never pass through Tuition Ledger
 8. Test payment recorded and receipt message received on the owner's own phone
 9. First fee run previewed (dry run shows every charge before the 1st)
 

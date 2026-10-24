@@ -1,10 +1,12 @@
 # 05 — Data model
 
-PostgreSQL 16. Money columns are `bigint` paise. IDs are ULID strings with a type prefix. Every tenant table has `centre_id` and the composite index listed. Row-level security is enabled on tenant tables; the app role is `tl_app`, migrations run as `tl_migrate`.
+PostgreSQL 16. Money columns are `bigint` paise. IDs are ULID strings with a type prefix. Every tenant table has `centre_id` and the composite index listed. Row-level security is enabled on tenant tables; root and platform tables have none and are reachable only through the tenancy and platform modules (ADR-0002). `tl_migrate` owns the schema and runs migrations; the app connects as `tl_app`, which owns nothing, so every policy applies to it.
 
 ```mermaid
 erDiagram
-  centres ||--o{ users : has
+  users ||--o{ memberships : works_as
+  centres ||--o{ memberships : employs
+  users ||--o| platform_admins : granted
   centres ||--o{ batches : has
   centres ||--o{ students : has
   batches ||--o{ sessions : schedules
@@ -21,9 +23,10 @@ erDiagram
   centres ||--o{ outbox_messages : sends
   centres ||--|| subscriptions : subscribes
   plans ||--o{ subscriptions : priced_by
+  centres ||--o{ centre_payment_accounts : collects_with
 ```
 
-## Tenant tables
+## Root tables (no row-level security; tenancy module only)
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS citext;
@@ -32,18 +35,40 @@ CREATE TABLE centres (
   due_day smallint NOT NULL CHECK (due_day BETWEEN 1 AND 28), quiet_from time NOT NULL DEFAULT '20:00', quiet_to time NOT NULL DEFAULT '08:00',
   receipt_prefix text NOT NULL CHECK (receipt_prefix ~ '^[A-Z]{2,4}$'), whatsapp_sender_id text,
   whatsapp_status text NOT NULL DEFAULT 'not_connected' CHECK (whatsapp_status IN ('not_connected','pending','connected')),
-  trial_ends_on date, signup_source text NOT NULL DEFAULT 'console' CHECK (signup_source IN ('console','self')), status text NOT NULL DEFAULT 'active',
+  upi_id text CHECK (upi_id ~ '^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$'), upi_payee_name text, -- parent fees by UPI go here (ADR-0021)
+  signup_source text NOT NULL DEFAULT 'console' CHECK (signup_source IN ('console','self')), status text NOT NULL DEFAULT 'active',
   created_at timestamptz NOT NULL DEFAULT now());
 
+-- A person, across every centre they work at (ADR-0020). No centre_id, no role.
 CREATE TABLE users (
-  id text PRIMARY KEY, centre_id text NOT NULL REFERENCES centres, phone text NOT NULL UNIQUE, name text NOT NULL,
+  id text PRIMARY KEY, phone text NOT NULL UNIQUE, name text NOT NULL,
   email citext UNIQUE, email_verified_at timestamptz, password_hash text, -- Argon2id; null = WhatsApp-code sign-in only
   failed_logins smallint NOT NULL DEFAULT 0, locked_until timestamptz,
-  role text NOT NULL CHECK (role IN ('OWNER','TEACHER','ACCOUNTANT')), status text NOT NULL DEFAULT 'active', token_version int NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'active', token_version int NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now());
-CREATE INDEX ON users (centre_id);
 
+CREATE TABLE platform_admins (user_id text PRIMARY KEY REFERENCES users, granted_by text, granted_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE auth_tokens (id bigserial PRIMARY KEY, user_id text NOT NULL REFERENCES users, kind text NOT NULL CHECK (kind IN ('email_verify','password_reset')), token_hash text NOT NULL UNIQUE, expires_at timestamptz NOT NULL, used_at timestamptz);
+```
+
+## Tenant tables
+
+```sql
+-- Where a person works and as what; one row per user per centre (ADR-0020).
+CREATE TABLE memberships (
+  user_id text NOT NULL REFERENCES users, centre_id text NOT NULL REFERENCES centres,
+  role text NOT NULL CHECK (role IN ('OWNER','TEACHER','ACCOUNTANT')), status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','deactivated')),
+  invited_by text, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (user_id, centre_id));
+CREATE INDEX ON memberships (centre_id, status);
+
+-- The centre's own Razorpay credentials (ADR-0021). Secrets are AES-GCM ciphertext; the key is not in the database.
+CREATE TABLE centre_payment_accounts (
+  centre_id text NOT NULL REFERENCES centres, provider text NOT NULL CHECK (provider IN ('razorpay')),
+  auth_kind text NOT NULL CHECK (auth_kind IN ('api_key','oauth')), key_id text,
+  secret_encrypted bytea NOT NULL, webhook_secret_encrypted bytea NOT NULL,
+  status text NOT NULL DEFAULT 'connected' CHECK (status IN ('connected','invalid','disconnected')),
+  updated_by text, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (centre_id, provider));
+
 CREATE TABLE settings (centre_id text REFERENCES centres, key text, value jsonb NOT NULL, updated_by text, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (centre_id, key));
 CREATE TABLE audit_log (id bigserial PRIMARY KEY, centre_id text NOT NULL, user_id text, action text NOT NULL, entity text, entity_id text, before_json jsonb, after_json jsonb, at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX ON audit_log (centre_id, at DESC);
@@ -141,7 +166,7 @@ CREATE UNIQUE INDEX outbox_dedupe ON outbox_messages (dedupe_key) WHERE dedupe_k
 CREATE INDEX outbox_relay ON outbox_messages (status, not_before) WHERE status = 'queued';
 CREATE INDEX ON outbox_messages (centre_id, created_at DESC);
 
-CREATE TABLE calendar_feeds (user_id text PRIMARY KEY REFERENCES users, centre_id text NOT NULL, token_hash text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz, last_fetched_at timestamptz);
+CREATE TABLE calendar_feeds (user_id text REFERENCES users, centre_id text, PRIMARY KEY (user_id, centre_id), token_hash text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz, last_fetched_at timestamptz);
 CREATE TABLE calendar_links (user_id text PRIMARY KEY REFERENCES users, provider text NOT NULL, refresh_token_enc text NOT NULL, calendar_id text, status text NOT NULL, connected_at timestamptz); -- Google sync, post-pilot
 
 CREATE TABLE announcements (id text PRIMARY KEY, centre_id text NOT NULL, batch_id text REFERENCES batches, body text NOT NULL CHECK (char_length(body) <= 300), kind text NOT NULL DEFAULT 'manual', sent_by text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), recipients int);
@@ -156,7 +181,11 @@ CREATE TABLE webhook_events (provider text, event_id text, payload jsonb NOT NUL
 
 ```sql
 CREATE TABLE plans (code text PRIMARY KEY, name text, price_paise bigint NOT NULL, included_students int NOT NULL, overage_per_student_paise bigint NOT NULL, message_cap int NOT NULL, features text[] NOT NULL, active boolean NOT NULL DEFAULT true);
-CREATE TABLE subscriptions (centre_id text PRIMARY KEY REFERENCES centres, plan_code text REFERENCES plans, status text NOT NULL, period_start date NOT NULL, grace_until date, razorpay_subscription_id text, updated_at timestamptz);
+CREATE TABLE subscriptions (
+  centre_id text PRIMARY KEY REFERENCES centres, plan_code text NOT NULL REFERENCES plans,
+  status text NOT NULL CHECK (status IN ('trialing','active','past_due','read_only','suspended','cancelled')),
+  trial_ends_on date, period_start date NOT NULL, grace_until date, razorpay_subscription_id text, updated_at timestamptz);
+-- trialing → active (paid) or Free (under limits) or read_only at trial end; active → past_due (unpaid on the 7th) → read_only (14th) → suspended (60 days) (08 §3)
 CREATE TABLE usage (centre_id text, period char(7), active_students int, messages_sent int, payments int, PRIMARY KEY (centre_id, period));
 CREATE TABLE platform_invoices (id text PRIMARY KEY, centre_id text, period char(7), amount_paise bigint, status text, razorpay_ref text, created_at timestamptz);
 ```
@@ -177,7 +206,7 @@ ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON students USING (centre_id = current_setting('app.centre_id', true));
 -- repeated for every tenant table by the migration generator
 ```
-The app sets `SET LOCAL app.centre_id = '<id>'` in a `TransactionSynchronization` before any statement.
+The app sets `SET LOCAL app.centre_id = '<id>'` in a `TransactionSynchronization` before any statement. With no context the setting is null and every policy returns no rows.
 
 ## Sign conventions
 

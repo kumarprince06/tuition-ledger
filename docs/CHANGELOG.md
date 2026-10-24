@@ -2,6 +2,17 @@
 
 Apply these in order if you maintain a hand-edited copy.
 
+## 2026-10-24 (b) — identity and memberships, tenant isolation before auth, centre payment accounts
+- NEW `adr/0020-identity-memberships.md`: a person is one global `users` row; their role at each centre is a `memberships` row; platform admins are a grant (`platform_admins`); sign-in picks or asks for the centre.
+- NEW `adr/0021-centre-payment-accounts.md`: parent fees only to the centre's own cash, UPI ID or Razorpay; never through Tuition Ledger; pasted Razorpay keys first, Partner OAuth later; per-centre webhooks.
+- `adr/0002`: `tl_migrate` owns the schema and the app runs as `tl_app`; fails closed without a context; root and platform tables without RLS; provisioning sets the context to the new centre; only tests set the context before auth. `adr/0018`: trial date on `subscriptions`; two-centre teacher limitation resolved. `adr/README.md` rows.
+- `05-data-model.md`: root tables section; `users` without `centre_id` and `role`; `memberships`, `platform_admins`, `centre_payment_accounts`; `centres.upi_id`, `upi_payee_name`; `centres.trial_ends_on` moved to `subscriptions` with a status check; `calendar_feeds` keyed by (user, centre).
+- `02-srs.md`: CEN-1 payment methods; CEN-2 one person, many centres; CEN-5 now M for every role; PAY-6 (UPI link and QR), PAY-7 (fees only to the centre's accounts).
+- `03-system-design.md` §4–5, `04-lld.md` §2, §8, §10: roles, root tables, centre selection, provisioning service, per-centre Razorpay client and webhooks, subscription statuses.
+- `06-api.md` + `api/openapi.yaml`: `POST /auth/centre`, `POST /centres`, `/me` lists centres, `/centre/payment-methods`, `/webhooks/razorpay/{centreId}`; staff management acts on memberships.
+- `07-tenant-admin.md`: payment-method settings; onboarding step 7. `09-sprint-plan.md`: S1-03, S1-05, S1-07 (isolation and provisioning before auth), S3-08, S3-14, new S3-18/19; sprint totals. `11-security-privacy.md`: threats and data class. `14-risks.md`: R17, R18, decision log.
+- Not yet re-derived: `16-work-estimation.md` and `estimation/work-estimation.xlsx` (+2 hd BE in sprint 1, +2 hd BE and +1 hd FE in sprint 3).
+
 ## 2026-10-24 — self-serve registration, backend gaps found by the prototype, v2 static design
 - NEW `adr/0018-self-serve-signup.md` and `adr/0019-email-password-login.md` (partly supersedes ADR-0009); rows in `adr/README.md`; ADR-0009 status line.
 - Registration takes centre name, owner name, email, WhatsApp number and password (the receipt prefix is generated from the name and editable in Settings until the first receipt); sign-in by WhatsApp code or email + password (CEN-2, CEN-6, CEN-8); `POST /auth/login`, email verification, password reset, `PATCH /me/credentials`; `users` credential columns and `auth_tokens`; threats and controls in `11-security-privacy.md`; R16.
